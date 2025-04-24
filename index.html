@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CHIA PIXELVERSE</title>
+  <title>Chia Pixelverse</title>
   <style>
     body {
       display: flex;
@@ -30,6 +30,8 @@
       image-rendering: pixelated;
       background-color: transparent;
       display: block;
+      width: 1000px;
+      height: 1000px;
     }
 
     #controls {
@@ -48,7 +50,7 @@
   </style>
 </head>
 <body>
-  <h1>Pixel Art Canvas</h1>
+  <h1>Chia Pixelverse</h1>
 
   <div id="container">
     <canvas id="canvas" width="1000" height="1000"></canvas>
@@ -69,6 +71,20 @@
 
     let drawing = false;
     let zoom = 1;
+    const size = 10;
+
+    // Load saved image
+    const saved = localStorage.getItem('pixel-art');
+    if (saved) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = saved;
+    }
+
+    // Save canvas to localStorage
+    function save() {
+      localStorage.setItem('pixel-art', canvas.toDataURL());
+    }
 
     // Масштабирование колёсиком мыши
     container.addEventListener('wheel', (e) => {
@@ -107,8 +123,6 @@
 
     function draw(e) {
       const pos = getMousePos(e);
-      const size = 10;
-
       if (e.altKey) {
         const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
         const hex = `#${[pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('')}`;
@@ -116,10 +130,10 @@
       } else {
         ctx.fillStyle = colorPicker.value;
         ctx.fillRect(pos.x - (pos.x % size), pos.y - (pos.y % size), size, size);
+        save();
       }
     }
 
-    // Инициализация
     updateZoom();
   </script>
 </body>
