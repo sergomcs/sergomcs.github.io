@@ -22,7 +22,14 @@
     }
 
     #container {
+      width: 1000px;
+      height: 1000px;
       position: relative;
+      border: 3px solid #ccc;
+      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+                        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
       touch-action: none;
     }
 
@@ -31,7 +38,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      background-color: #333; /* Возвращаем темный фон */
+      background-color: transparent; /* фон прозрачный */
     }
 
     #controls {
@@ -56,7 +63,7 @@
     const colorPicker = document.getElementById('colorPicker');
     const container = document.getElementById('container');
 
-    const pixelSize = 1; // Устанавливаем размер пикселя 1x1
+    const pixelSize = 1; // Размер одного пикселя
     let drawing = false;
 
     // Инициализация холста
