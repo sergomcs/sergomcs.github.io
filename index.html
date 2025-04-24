@@ -120,9 +120,9 @@
   <script>
     // Конфигурация
     const config = {
-      pixelSize: 16,    // Размер одного пикселя в масштабе 100%
-      canvasWidth: 32,  // Ширина в пикселях
-      canvasHeight: 32, // Высота в пикселях
+      pixelSize: 1,     // Размер одного пикселя
+      canvasWidth: 1000,  // Ширина в пикселях
+      canvasHeight: 1000, // Высота в пикселях
       maxZoom: 800,
       minZoom: 100
     };
@@ -152,38 +152,27 @@
       grid.width = config.canvasWidth;
       grid.height = config.canvasHeight;
       
-      // Отрисовка сетки
-      drawGrid();
+      // Отрисовка шахматного фона
+      drawCheckerboard();
       
       // Загружаем сохраненные данные
       loadCanvas();
       
       // Устанавливаем начальный масштаб
-      updateZoom(100);
+      updateZoom(0);
       
       // Настройка обработчиков событий
       setupEventListeners();
     }
 
-    // Отрисовка сетки
-    function drawGrid() {
-      gridCtx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-      gridCtx.lineWidth = 1;
-      
-      // Вертикальные линии
-      for (let x = 0; x <= config.canvasWidth; x++) {
-        gridCtx.beginPath();
-        gridCtx.moveTo(x, 0);
-        gridCtx.lineTo(x, config.canvasHeight);
-        gridCtx.stroke();
-      }
-      
-      // Горизонтальные линии
-      for (let y = 0; y <= config.canvasHeight; y++) {
-        gridCtx.beginPath();
-        gridCtx.moveTo(0, y);
-        gridCtx.lineTo(config.canvasWidth, y);
-        gridCtx.stroke();
+    // Отрисовка шахматного фона
+    function drawCheckerboard() {
+      for (let x = 0; x < config.canvasWidth; x++) {
+        for (let y = 0; y < config.canvasHeight; y++) {
+          const color = (x + y) % 2 === 0 ? '#D3D3D3' : '#A9A9A9'; // Белый и серый
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, config.pixelSize, config.pixelSize);
+        }
       }
     }
 
@@ -199,8 +188,6 @@
         };
         img.src = saved;
       } else {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
         lastDataURL = canvas.toDataURL();
       }
     }
@@ -234,7 +221,7 @@
     // Рисование пикселя
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x, y, 1, 1);
+      ctx.fillRect(x, y, config.pixelSize, config.pixelSize);
       saveCanvas();
     }
 
@@ -325,45 +312,4 @@
           e.preventDefault();
           const currentDistance = getDistance(e.touches[0], e.touches[1]);
           if (initialDistance !== null) {
-            const scale = currentDistance / initialDistance;
-            const newZoom = Math.max(config.minZoom, Math.min(config.maxZoom, zoom * scale));
-            updateZoom(newZoom);
-          }
-          initialDistance = currentDistance;
-        }
-      }, { passive: false });
-      
-      canvasContainer.addEventListener('touchend', () => {
-        initialDistance = null;
-      }, { passive: false });
-      
-      // Синхронизация
-      syncInterval = setInterval(() => {
-        const saved = localStorage.getItem('chia-pixelverse');
-        if (saved && saved !== lastDataURL) {
-          const img = new Image();
-          img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-            lastDataURL = saved;
-          };
-          img.src = saved;
-        }
-      }, 1000);
-    }
-
-    // Вспомогательная функция для расстояния между точками
-    function getDistance(touch1, touch2) {
-      return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-    }
-
-    // Инициализация при загрузке
-    window.addEventListener('load', init);
-    
-    // Очистка при закрытии
-    window.addEventListener('beforeunload', () => {
-      clearInterval(syncInterval);
-    });
-  </script>
-</body>
-</html>
+            const scale
