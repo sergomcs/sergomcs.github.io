@@ -58,19 +58,6 @@
       border-radius: 5px;
       font-size: 14px;
     }
-
-    #palette {
-      display: flex;
-      gap: 5px;
-      margin-top: 10px;
-    }
-
-    .color-box {
-      width: 30px;
-      height: 30px;
-      cursor: pointer;
-      border: 1px solid #fff;
-    }
   </style>
 </head>
 <body>
@@ -82,15 +69,6 @@
 
   <div id="controls">
     <input type="color" id="colorPicker" value="#000000" />
-  </div>
-
-  <div id="palette">
-    <div class="color-box" style="background-color: #ff0000;" onclick="changeColor('#ff0000')"></div>
-    <div class="color-box" style="background-color: #00ff00;" onclick="changeColor('#00ff00')"></div>
-    <div class="color-box" style="background-color: #0000ff;" onclick="changeColor('#0000ff')"></div>
-    <div class="color-box" style="background-color: #ffff00;" onclick="changeColor('#ffff00')"></div>
-    <div class="color-box" style="background-color: #ff00ff;" onclick="changeColor('#ff00ff')"></div>
-    <div class="color-box" style="background-color: #00ffff;" onclick="changeColor('#00ffff')"></div>
   </div>
 
   <div id="zoom-display">Zoom: 100%</div>
@@ -106,7 +84,6 @@
     let drawing = false;
     const pixelSize = 10;
     let initialDistance = null;
-    let currentColor = '#000000';
 
     // Инициализация холста
     function initCanvas() {
@@ -217,7 +194,7 @@
 
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      ctx.fillRect(x - (x % pixelSize), y - (y % pixelSize), pixelSize, pixelSize);
       saveDrawing();
     }
 
@@ -228,12 +205,12 @@
       } else {
         pos = getMousePos(e);
       }
-      
+
       if (e.altKey || (e.touches && e.touches.length > 1)) {
         return;
       }
       
-      drawPixel(pos.x, pos.y, currentColor);
+      drawPixel(pos.x, pos.y, colorPicker.value);
     }
 
     // Обработчики мыши
@@ -264,12 +241,6 @@
     });
 
     canvas.addEventListener('touchend', () => drawing = false);
-
-    // Обработчик изменения цвета
-    function changeColor(color) {
-      currentColor = color;
-      colorPicker.value = color;
-    }
 
     // Инициализация при загрузке
     window.addEventListener('load', () => {
