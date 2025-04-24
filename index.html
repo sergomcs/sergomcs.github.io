@@ -11,45 +11,86 @@
       font-family: Arial, sans-serif;
       background: linear-gradient(to bottom right, #48A23F, #005C3B);
       color: white;
-      height: 100vh;
       margin: 0;
+      height: 100vh;
     }
 
     h1 {
       margin-top: 20px;
     }
 
+    #container {
+      overflow: auto;
+      border: 2px solid #ccc;
+      max-width: 90vw;
+      max-height: 70vh;
+    }
+
     #canvas {
       image-rendering: pixelated;
-      margin-top: 20px;
-      border: 1px solid #ccc;
       background-color: transparent;
+      display: block;
     }
 
     #controls {
       margin: 20px;
     }
+
+    #zoom-display {
+      position: fixed;
+      bottom: 10px;
+      right: 20px;
+      background: rgba(0,0,0,0.4);
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <h1>Pixel Art Canvas</h1>
-  <canvas id="canvas" width="1000" height="1000"></canvas>
+
+  <div id="container">
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+  </div>
+
   <div id="controls">
     <input type="color" id="colorPicker" value="#000000" />
   </div>
 
+  <div id="zoom-display">Zoom: 100%</div>
+
   <script>
     const canvas = document.getElementById('canvas');
+    const container = document.getElementById('container');
     const ctx = canvas.getContext('2d');
     const colorPicker = document.getElementById('colorPicker');
+    const zoomDisplay = document.getElementById('zoom-display');
 
     let drawing = false;
+    let zoom = 1;
+
+    // Масштабирование колёсиком мыши
+    container.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const zoomFactor = delta > 0 ? 1.1 : 0.9;
+        zoom = Math.max(0.2, Math.min(10, zoom * zoomFactor));
+        updateZoom();
+      }
+    });
+
+    function updateZoom() {
+      canvas.style.transform = `scale(${zoom})`;
+      zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+    }
 
     function getMousePos(e) {
       const rect = canvas.getBoundingClientRect();
       return {
-        x: Math.floor(e.clientX - rect.left),
-        y: Math.floor(e.clientY - rect.top)
+        x: Math.floor((e.clientX - rect.left) / zoom),
+        y: Math.floor((e.clientY - rect.top) / zoom)
       };
     }
 
@@ -58,17 +99,16 @@
       draw(e);
     });
 
-    canvas.addEventListener('mouseup', () => {
-      drawing = false;
-    });
-
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
     canvas.addEventListener('mousemove', (e) => {
       if (drawing) draw(e);
     });
 
     function draw(e) {
       const pos = getMousePos(e);
-      const size = 10; // размер пикселя
+      const size = 10;
+
       if (e.altKey) {
         const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
         const hex = `#${[pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('')}`;
@@ -78,6 +118,9 @@
         ctx.fillRect(pos.x - (pos.x % size), pos.y - (pos.y % size), size, size);
       }
     }
+
+    // Инициализация
+    updateZoom();
   </script>
 </body>
 </html>
