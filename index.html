@@ -18,94 +18,177 @@
     }
 
     h1 {
-      margin: 20px 0;
+      margin: 10px 0;
       font-size: 24px;
       text-align: center;
     }
 
-    #container-wrapper {
+    #app-container {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       width: 100%;
-      height: calc(100% - 120px);
-      overflow: hidden;
+      height: calc(100% - 60px);
     }
 
-    #container {
-      width: 1000px;
-      height: 1000px;
-      overflow: hidden;
+    #canvas-container {
       position: relative;
-      border: 3px solid #ccc;
-      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
-                        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
-      background-size: 20px 20px;
-      background-position: 0 0, 10px 10px;
-      touch-action: none;
+      overflow: hidden;
+      border: 3px solid #333;
+      background-color: #222;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      margin: 10px;
     }
 
     canvas {
       image-rendering: pixelated;
       display: block;
-      transform-origin: 0 0;
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 1000px;
-      height: 1000px;
+      background-color: #222;
     }
 
     #controls {
-      margin: 10px;
       display: flex;
-      justify-content: center;
+      gap: 15px;
+      margin: 10px;
+      align-items: center;
+    }
+
+    #zoom-controls {
+      display: flex;
+      gap: 5px;
+    }
+
+    button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #444;
     }
 
     #zoom-display {
-      position: fixed;
-      bottom: 10px;
-      right: 20px;
       background: rgba(0, 0, 0, 0.4);
       padding: 4px 8px;
       border-radius: 5px;
       font-size: 14px;
+    }
+
+    .pixel-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 20px;
+      }
+      #controls {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
   <h1>Chia Pixelverse</h1>
 
-  <div id="container-wrapper">
-    <div id="container">
-      <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div id="app-container">
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+      <canvas id="grid" class="pixel-grid"></canvas>
+    </div>
+
+    <div id="controls">
+      <input type="color" id="colorPicker" value="#000000" />
+      <div id="zoom-controls">
+        <button id="zoom-out">-</button>
+        <button id="zoom-reset">100%</button>
+        <button id="zoom-in">+</button>
+      </div>
+      <div id="zoom-display">Zoom: 100%</div>
     </div>
   </div>
 
-  <div id="controls">
-    <input type="color" id="colorPicker" value="#000000" />
-  </div>
-
-  <div id="zoom-display">Zoom: 100%</div>
-
   <script>
+    // Конфигурация
+    const config = {
+      pixelSize: 16,    // Размер одного пикселя в масштабе 100%
+      canvasWidth: 32,  // Ширина в пикселях
+      canvasHeight: 32, // Высота в пикселях
+      maxZoom: 800,
+      minZoom: 100
+    };
+
+    // Элементы
     const canvas = document.getElementById('canvas');
+    const grid = document.getElementById('grid');
     const ctx = canvas.getContext('2d');
+    const gridCtx = grid.getContext('2d');
     const colorPicker = document.getElementById('colorPicker');
     const zoomDisplay = document.getElementById('zoom-display');
-    const container = document.getElementById('container');
-    const containerWrapper = document.getElementById('container-wrapper');
+    const canvasContainer = document.getElementById('canvas-container');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomResetBtn = document.getElementById('zoom-reset');
+    const zoomInBtn = document.getElementById('zoom-in');
 
-    let zoom = 1;
+    let zoom = 100; // в процентах
     let drawing = false;
-    const pixelSize = 10;
-    let initialDistance = null;
     let lastDataURL = '';
     let syncInterval;
 
-    // Инициализация холста
-    function initCanvas() {
-      // Загружаем из localStorage
+    // Инициализация
+    function init() {
+      // Устанавливаем размеры холста
+      canvas.width = config.canvasWidth;
+      canvas.height = config.canvasHeight;
+      grid.width = config.canvasWidth;
+      grid.height = config.canvasHeight;
+      
+      // Отрисовка сетки
+      drawGrid();
+      
+      // Загружаем сохраненные данные
+      loadCanvas();
+      
+      // Устанавливаем начальный масштаб
+      updateZoom(100);
+      
+      // Настройка обработчиков событий
+      setupEventListeners();
+    }
+
+    // Отрисовка сетки
+    function drawGrid() {
+      gridCtx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+      gridCtx.lineWidth = 1;
+      
+      // Вертикальные линии
+      for (let x = 0; x <= config.canvasWidth; x++) {
+        gridCtx.beginPath();
+        gridCtx.moveTo(x, 0);
+        gridCtx.lineTo(x, config.canvasHeight);
+        gridCtx.stroke();
+      }
+      
+      // Горизонтальные линии
+      for (let y = 0; y <= config.canvasHeight; y++) {
+        gridCtx.beginPath();
+        gridCtx.moveTo(0, y);
+        gridCtx.lineTo(config.canvasWidth, y);
+        gridCtx.stroke();
+      }
+    }
+
+    // Загрузка холста
+    function loadCanvas() {
       const saved = localStorage.getItem('chia-pixelverse');
       if (saved) {
         const img = new Image();
@@ -116,212 +199,167 @@
         };
         img.src = saved;
       } else {
-        // Очищаем холст, если нет сохраненных данных
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         lastDataURL = canvas.toDataURL();
       }
+    }
+
+    // Обновление масштаба
+    function updateZoom(newZoom) {
+      zoom = Math.max(config.minZoom, Math.min(config.maxZoom, newZoom));
       
-      // Устанавливаем начальный масштаб
-      resetZoom();
-    }
-
-    // Синхронизация с хранилищем
-    function syncCanvas() {
-      const saved = localStorage.getItem('chia-pixelverse');
-      if (saved && saved !== lastDataURL) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-          lastDataURL = saved;
-        };
-        img.src = saved;
-      }
-    }
-
-    // Сброс масштаба
-    function resetZoom() {
-      zoom = 1;
-      canvas.style.transform = `scale(${zoom})`;
-      zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+      const scale = zoom / 100;
+      const displayWidth = config.canvasWidth * config.pixelSize * scale;
+      const displayHeight = config.canvasHeight * config.pixelSize * scale;
       
-      // Центрируем контейнер
-      centerContainer();
-    }
-
-    // Центрирование контейнера
-    function centerContainer() {
-      const wrapperWidth = containerWrapper.clientWidth;
-      const wrapperHeight = containerWrapper.clientHeight;
+      canvasContainer.style.width = `${displayWidth}px`;
+      canvasContainer.style.height = `${displayHeight}px`;
       
-      if (wrapperWidth > 1000) {
-        container.style.margin = '0 auto';
-      } else {
-        container.style.margin = '0';
-      }
-    }
-
-    // Зум колесиком мыши
-    container.addEventListener('wheel', (e) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY;
-        const factor = delta > 0 ? 1.1 : 0.9;
-        updateZoom(factor, e.clientX - container.getBoundingClientRect().left, e.clientY - container.getBoundingClientRect().top);
-      }
-    }, { passive: false });
-
-    // Зум жестом на мобильном
-    container.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        initialDistance = getDistance(e.touches[0], e.touches[1]);
-      }
-    }, { passive: false });
-
-    container.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const currentDistance = getDistance(e.touches[0], e.touches[1]);
-        if (initialDistance !== null) {
-          const factor = currentDistance / initialDistance;
-          const touchCenter = getTouchCenter(e.touches[0], e.touches[1]);
-          updateZoom(factor, touchCenter.x, touchCenter.y);
-          initialDistance = currentDistance;
-        }
-      }
-    }, { passive: false });
-
-    container.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2) {
-        initialDistance = null;
-      }
-    }, { passive: false });
-
-    function getDistance(touch1, touch2) {
-      return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-    }
-
-    function getTouchCenter(touch1, touch2) {
-      const rect = container.getBoundingClientRect();
-      return {
-        x: ((touch1.clientX + touch2.clientX) / 2) - rect.left,
-        y: ((touch1.clientY + touch2.clientY) / 2) - rect.top
-      };
-    }
-
-    function updateZoom(factor, centerX, centerY) {
-      const oldZoom = zoom;
-      zoom = Math.max(0.1, Math.min(5, zoom * factor));
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+      grid.style.width = `${displayWidth}px`;
+      grid.style.height = `${displayHeight}px`;
       
-      // Масштабирование относительно центра
-      const xPercent = centerX / container.clientWidth;
-      const yPercent = centerY / container.clientHeight;
-      
-      const deltaWidth = container.clientWidth * (zoom - oldZoom);
-      const deltaHeight = container.clientHeight * (zoom - oldZoom);
-      
-      const offsetX = deltaWidth * xPercent;
-      const offsetY = deltaHeight * yPercent;
-      
-      canvas.style.transform = `scale(${zoom})`;
-      zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+      zoomDisplay.textContent = `Zoom: ${zoom}%`;
     }
 
-    function getMousePos(e) {
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: Math.floor((e.clientX - rect.left) / zoom),
-        y: Math.floor((e.clientY - rect.top) / zoom)
-      };
-    }
-
-    function getTouchPos(e) {
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: Math.floor((touch.clientX - rect.left) / zoom),
-        y: Math.floor((touch.clientY - rect.top) / zoom)
-      };
-    }
-
-    function saveDrawing() {
+    // Сохранение рисунка
+    function saveCanvas() {
       const data = canvas.toDataURL();
       localStorage.setItem('chia-pixelverse', data);
       lastDataURL = data;
     }
 
+    // Рисование пикселя
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x - (x % pixelSize), y - (y % pixelSize), pixelSize, pixelSize);
-      saveDrawing();
+      ctx.fillRect(x, y, 1, 1);
+      saveCanvas();
     }
 
-    function draw(e) {
-      let pos;
-      if (e.type.includes('touch')) {
-        if (e.touches.length > 1) return;
-        pos = getTouchPos(e);
-      } else {
-        pos = getMousePos(e);
-      }
+    // Получение координат пикселя
+    function getPixelCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scale = zoom / 100;
+      const pixelDisplaySize = config.pixelSize * scale;
+      
+      const x = Math.floor((e.clientX - rect.left) / pixelDisplaySize);
+      const y = Math.floor((e.clientY - rect.top) / pixelDisplaySize);
+      
+      return { x, y };
+    }
+
+    // Обработка рисования
+    function handleDraw(e) {
+      const { x, y } = getPixelCoordinates(e);
       
       if (e.altKey) {
-        const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+        // Пипетка
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
         const hex = `#${[pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')}`;
         colorPicker.value = hex;
       } else {
-        drawPixel(pos.x, pos.y, colorPicker.value);
+        // Рисование
+        if (x >= 0 && x < config.canvasWidth && y >= 0 && y < config.canvasHeight) {
+          drawPixel(x, y, colorPicker.value);
+        }
       }
     }
 
-    // Обработчики мыши
-    canvas.addEventListener('mousedown', (e) => {
-      drawing = true;
-      draw(e);
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (drawing) draw(e);
-    });
-
-    canvas.addEventListener('mouseup', () => drawing = false);
-    canvas.addEventListener('mouseleave', () => drawing = false);
-
-    // Обработчики касаний
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
+    // Настройка обработчиков событий
+    function setupEventListeners() {
+      // Мышь
+      canvas.addEventListener('mousedown', (e) => {
         drawing = true;
-        draw(e);
-      }
-    }, { passive: false });
+        handleDraw(e);
+      });
+      
+      canvas.addEventListener('mousemove', (e) => {
+        if (drawing) handleDraw(e);
+      });
+      
+      canvas.addEventListener('mouseup', () => drawing = false);
+      canvas.addEventListener('mouseleave', () => drawing = false);
+      
+      // Касания
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        drawing = true;
+        handleDraw(e.touches[0]);
+      }, { passive: false });
+      
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (drawing) handleDraw(e.touches[0]);
+      }, { passive: false });
+      
+      canvas.addEventListener('touchend', () => drawing = false);
+      
+      // Кнопки масштабирования
+      zoomOutBtn.addEventListener('click', () => updateZoom(zoom - 20));
+      zoomResetBtn.addEventListener('click', () => updateZoom(100));
+      zoomInBtn.addEventListener('click', () => updateZoom(zoom + 20));
+      
+      // Масштабирование колесиком
+      canvasContainer.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? -20 : 20;
+          updateZoom(zoom + delta);
+        }
+      }, { passive: false });
+      
+      // Масштабирование жестами
+      let initialDistance = null;
+      
+      canvasContainer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          initialDistance = getDistance(e.touches[0], e.touches[1]);
+        }
+      }, { passive: false });
+      
+      canvasContainer.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const currentDistance = getDistance(e.touches[0], e.touches[1]);
+          if (initialDistance !== null) {
+            const scale = currentDistance / initialDistance;
+            const newZoom = Math.max(config.minZoom, Math.min(config.maxZoom, zoom * scale));
+            updateZoom(newZoom);
+          }
+          initialDistance = currentDistance;
+        }
+      }, { passive: false });
+      
+      canvasContainer.addEventListener('touchend', () => {
+        initialDistance = null;
+      }, { passive: false });
+      
+      // Синхронизация
+      syncInterval = setInterval(() => {
+        const saved = localStorage.getItem('chia-pixelverse');
+        if (saved && saved !== lastDataURL) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            lastDataURL = saved;
+          };
+          img.src = saved;
+        }
+      }, 1000);
+    }
 
-    canvas.addEventListener('touchmove', (e) => {
-      if (drawing && e.touches.length === 1) {
-        draw(e);
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', () => drawing = false);
-
-    // Обработчик изменения размера окна
-    window.addEventListener('resize', centerContainer);
+    // Вспомогательная функция для расстояния между точками
+    function getDistance(touch1, touch2) {
+      return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+    }
 
     // Инициализация при загрузке
-    window.addEventListener('load', () => {
-      initCanvas();
-      
-      // Устанавливаем интервал для синхронизации (каждую секунду)
-      syncInterval = setInterval(syncCanvas, 1000);
-      
-      // Также синхронизируем при возвращении на вкладку
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          syncCanvas();
-        }
-      });
-    });
-
+    window.addEventListener('load', init);
+    
     // Очистка при закрытии
     window.addEventListener('beforeunload', () => {
       clearInterval(syncInterval);
