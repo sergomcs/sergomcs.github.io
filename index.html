@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Chia Pixelverse</title>
   <style>
     body {
@@ -21,13 +22,16 @@
     }
 
     #container {
-      width: 100%;
-      height: 100%;
+      width: 1000px;
+      height: 1000px;
       overflow: hidden;
       position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      border: 3px solid #ccc;
+      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+                        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+      touch-action: none;
     }
 
     canvas {
@@ -37,6 +41,8 @@
       position: absolute;
       left: 0;
       top: 0;
+      width: 1000px;
+      height: 1000px;
     }
 
     #controls {
@@ -58,7 +64,7 @@
   <h1>Chia Pixelverse</h1>
 
   <div id="container">
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" width="1000" height="1000"></canvas>
   </div>
 
   <div id="controls">
@@ -77,52 +83,91 @@
     let zoom = 1;
     let drawing = false;
     const pixelSize = 10;
+    let initialDistance = null;
 
-    // Восстановление из localStorage
-    const saved = localStorage.getItem('chia-pixelverse');
-    if (saved) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
-      img.src = saved;
-    }
-
-    // Устанавливаем начальный размер канваса 1000x1000 (без зума)
-    canvas.width = 1000;
-    canvas.height = 1000;
-
-    // Загружаем изображение листьев
-    const leafImage = new Image();
-    leafImage.src = 'https://www.example.com/leaf.png';  // Поменяй на свой URL с изображением
-
-    leafImage.onload = function() {
-      // Рисуем листья на фоне
-      for (let i = 0; i < 50; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const scale = Math.random() * 0.5 + 0.5; // Масштабирование от 50% до 100%
-
-        ctx.globalAlpha = 0.2; // Прозрачность листьев
-        ctx.drawImage(leafImage, x, y, leafImage.width * scale, leafImage.height * scale);
+    // Инициализация холста
+    function initCanvas() {
+      // Загружаем из localStorage
+      const saved = localStorage.getItem('chia-pixelverse');
+      if (saved) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = saved;
+      } else {
+        // Очищаем холст, если нет сохраненных данных
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
-    };
-
-    // Сохранение рисунка
-    function saveDrawing() {
-      const data = canvas.toDataURL();
-      localStorage.setItem('chia-pixelverse', data);
     }
 
-    // Зум
+    // Синхронизация с сервером (эмуляция)
+    function syncWithServer() {
+      // В реальном приложении здесь был бы запрос к серверу
+      // для получения актуального состояния холста
+      // Для демонстрации просто используем localStorage
+      initCanvas();
+    }
+
+    // Зум колесиком мыши
     container.addEventListener('wheel', (e) => {
       if (e.ctrlKey) {
         e.preventDefault();
         const delta = -e.deltaY;
         const factor = delta > 0 ? 1.1 : 0.9;
-        zoom = Math.max(0.1, zoom * factor);
-        canvas.style.transform = `scale(${zoom})`;
-        zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+        updateZoom(factor, e.clientX - container.getBoundingClientRect().left, e.clientY - container.getBoundingClientRect().top);
       }
     });
+
+    // Зум жестом на мобильном
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        initialDistance = getDistance(e.touches[0], e.touches[1]);
+      }
+    });
+
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDistance = getDistance(e.touches[0], e.touches[1]);
+        if (initialDistance !== null) {
+          const factor = currentDistance / initialDistance;
+          const touchCenter = getTouchCenter(e.touches[0], e.touches[1]);
+          updateZoom(factor, touchCenter.x, touchCenter.y);
+          initialDistance = currentDistance;
+        }
+      }
+    });
+
+    container.addEventListener('touchend', () => {
+      initialDistance = null;
+    });
+
+    function getDistance(touch1, touch2) {
+      return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+    }
+
+    function getTouchCenter(touch1, touch2) {
+      return {
+        x: (touch1.clientX + touch2.clientX) / 2 - container.getBoundingClientRect().left,
+        y: (touch1.clientY + touch2.clientY) / 2 - container.getBoundingClientRect().top
+      };
+    }
+
+    function updateZoom(factor, centerX, centerY) {
+      const oldZoom = zoom;
+      zoom = Math.max(0.1, Math.min(5, zoom * factor));
+      
+      // Масштабирование относительно центра
+      const containerRect = container.getBoundingClientRect();
+      const offsetX = (centerX / oldZoom - centerX / zoom);
+      const offsetY = (centerY / oldZoom - centerY / zoom);
+      
+      canvas.style.transform = `scale(${zoom}) translate(${offsetX}px, ${offsetY}px)`;
+      zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+    }
 
     function getMousePos(e) {
       const rect = canvas.getBoundingClientRect();
@@ -132,6 +177,21 @@
       };
     }
 
+    function getTouchPos(e) {
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: Math.floor((touch.clientX - rect.left) / zoom),
+        y: Math.floor((touch.clientY - rect.top) / zoom)
+      };
+    }
+
+    function saveDrawing() {
+      const data = canvas.toDataURL();
+      localStorage.setItem('chia-pixelverse', data);
+      // В реальном приложении здесь бы отправлялись изменения на сервер
+    }
+
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
       ctx.fillRect(x - (x % pixelSize), y - (y % pixelSize), pixelSize, pixelSize);
@@ -139,7 +199,17 @@
     }
 
     function draw(e) {
-      const pos = getMousePos(e);
+      let pos;
+      if (e.type.includes('touch')) {
+        pos = getTouchPos(e);
+      } else {
+        pos = getMousePos(e);
+      }
+      
+      if (e.altKey || (e.touches && e.touches.length > 1)) {
+        return;
+      }
+      
       if (e.altKey) {
         const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
         const hex = `#${[pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')}`;
@@ -149,6 +219,7 @@
       }
     }
 
+    // Обработчики мыши
     canvas.addEventListener('mousedown', (e) => {
       drawing = true;
       draw(e);
@@ -161,42 +232,29 @@
     canvas.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('mouseleave', () => drawing = false);
 
-    // Мобильное масштабирование с двумя пальцами
-    let initialDistance = null;
-    let initialZoom = zoom;
-
-    container.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        initialDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        initialZoom = zoom;
+    // Обработчики касаний
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        drawing = true;
+        draw(e);
       }
     });
 
-    container.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2 && initialDistance) {
-        const currentDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const scale = currentDistance / initialDistance;
-        zoom = Math.max(0.1, Math.min(10, initialZoom * scale));
-        canvas.style.transform = `scale(${zoom})`;
-        zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+    canvas.addEventListener('touchmove', (e) => {
+      if (drawing && e.touches.length === 1) {
+        draw(e);
       }
     });
 
-    container.addEventListener('touchend', () => {
-      initialDistance = null;
-    });
+    canvas.addEventListener('touchend', () => drawing = false);
 
-    // При открытии сайта устанавливаем начальное отображение
-    window.onload = function() {
-      const rect = canvas.getBoundingClientRect();
-      canvas.style.transform = `scale(${zoom})`;
-    };
+    // Инициализация при загрузке
+    window.addEventListener('load', () => {
+      initCanvas();
+      syncWithServer();
+      // Устанавливаем интервал для синхронизации (например, каждые 5 секунд)
+      setInterval(syncWithServer, 5000);
+    });
   </script>
 </body>
 </html>
