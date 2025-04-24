@@ -88,13 +88,17 @@
       img.src = saved;
     }
 
+    // Устанавливаем начальный размер канваса 1000x1000 (без зума)
+    canvas.width = 1000;
+    canvas.height = 1000;
+
     // Зум
     container.addEventListener('wheel', (e) => {
       if (e.ctrlKey) {
         e.preventDefault();
         const delta = -e.deltaY;
         const factor = delta > 0 ? 1.1 : 0.9;
-        zoom = Math.max(0.1, Math.min(10, zoom * factor));
+        zoom = Math.max(0.1, zoom * factor);
         canvas.style.transform = `scale(${zoom})`;
         zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
       }
