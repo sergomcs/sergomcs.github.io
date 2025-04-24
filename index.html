@@ -1,1 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chia Pixelverse</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #48A23F, #005C3B);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin: 20px 0;
+    }
+
+    #container {
+      width: 1000px;
+      height: 1000px;
+      overflow: hidden;
+      position: relative;
+      border: 3px solid #ccc;
+      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+                        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      display: block;
+      transform-origin: top left;
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    #controls {
+      margin: 10px;
+    }
+
+    #zoom-display {
+      position: fixed;
+      bottom: 10px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chia Pixelverse</h1>
+
+  <div id="container">
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+  </div>
+
+  <div id="controls">
+    <input type="color" id="colorPicker" value="#000000" />
+  </div>
+
+  <div id="zoom-display">Zoom: 100%</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const zoomDisplay = document.getElementById('zoom-display');
+    const container = document.getElementById('container');
+
+    let zoom = 1;
+    let drawing = false;
+    const pixelSize = 10;
+
+    // Восстановление из localStorage
+    const saved = localStorage.getItem('chia-pixelverse');
+    if (saved) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = saved;
+    }
+
+    // Устанавливаем начальный размер канваса 1000x1000 (без зума)
+    canvas.width = 1000;
+    canvas.height = 1000;
+
+    // Загружаем изображение листьев
+    const leafImage = new Image();
+    leafImage.src = 'https://www.example.com/leaf.png';  // Поменяй на свой URL с изображением
+
+    leafImage.onload = function() {
+      // Рисуем листья на фоне
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const scale = Math.random() * 0.5 + 0.5; // Масштабирование от 50% до 100%
+
+        ctx.globalAlpha = 0.2; // Прозрачность листьев
+        ctx.drawImage(leafImage, x, y, leafImage.width * scale, leafImage.height * scale);
+      }
+    };
+
+    // Зум
+    container.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const factor = delta > 0 ? 1.1 : 0.9;
+        zoom = Math.max(0.1, zoom * factor);
+        canvas.style.transform = `scale(${zoom})`;
+        zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+      }
+    });
+
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: Math.floor((e.clientX - rect.left) / zoom),
+        y: Math.floor((e.clientY - rect.top) / zoom)
+      };
+    }
+
+    function saveDrawing() {
+      const data = canvas.toDataURL();
+      localStorage.setItem('chia-pixelverse', data);
+    }
+
+    function drawPixel(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - (x % pixelSize), y - (y % pixelSize), pixelSize, pixelSize);
+      saveDrawing();
+    }
+
+    function draw(e) {
+      const pos = getMousePos(e);
+      if (e.altKey) {
+        const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+        const hex = `#${[pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+        colorPicker.value = hex;
+      } else {
+        drawPixel(pos.x, pos.y, colorPicker.value);
+      }
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      draw(e);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (drawing) draw(e);
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+
+    // Мобильное масштабирование с двумя пальцами
+    let initialDistance = null;
+    let initialZoom = zoom;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialZoom = zoom;
+      }
+    });
+
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialDistance) {
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const scale = currentDistance / initialDistance;
+        zoom = Math.max(0.1, Math.min(10, initialZoom * scale));
+        canvas.style.transform = `scale(${zoom})`;
+        zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+      }
+    });
+
+    container.addEventListener('touchend', () => {
+      initialDistance = null;
+    });
+
+  </script>
+</body>
+</html>
 
