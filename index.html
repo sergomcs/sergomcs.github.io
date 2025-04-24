@@ -29,9 +29,9 @@
     canvas {
       image-rendering: pixelated;
       display: block;
-      width: 1000px;
-      height: 1000px;
-      background-color: transparent; /* Возвращаем прозрачный фон */
+      width: 100%;
+      height: 100%;
+      background-color: #333; /* Возвращаем темный фон */
     }
 
     #controls {
@@ -56,7 +56,7 @@
     const colorPicker = document.getElementById('colorPicker');
     const container = document.getElementById('container');
 
-    const pixelSize = 10; // Размер одного пикселя
+    const pixelSize = 1; // Устанавливаем размер пикселя 1x1
     let drawing = false;
 
     // Инициализация холста
