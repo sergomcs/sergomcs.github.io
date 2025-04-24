@@ -24,7 +24,6 @@
     #container {
       width: 1000px;
       height: 1000px;
-      overflow: hidden;
       position: relative;
       border: 3px solid #ccc;
       background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
@@ -37,11 +36,9 @@
     canvas {
       image-rendering: pixelated;
       display: block;
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 1000px;
-      height: 1000px;
+      width: 1000px; /* 1000px фиксированный размер */
+      height: 1000px; /* 1000px фиксированный размер */
+      background-color: white; /* Убедитесь, что фон белый */
     }
 
     #controls {
@@ -66,7 +63,7 @@
     const colorPicker = document.getElementById('colorPicker');
     const container = document.getElementById('container');
 
-    const pixelSize = 10;
+    const pixelSize = 10; // Размер одного пикселя
     let drawing = false;
 
     // Инициализация холста
