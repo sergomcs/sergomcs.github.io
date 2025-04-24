@@ -11,25 +11,83 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background-color: #f0f0f0;
+      background: linear-gradient(to bottom, #7db92f, #62a71f);
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      border: 2px solid #000;
+      cursor: crosshair;
     }
     canvas {
       border: 1px solid #000;
-      cursor: crosshair;
+      background-color: #fff;
+    }
+    .palette {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      width: 240px;
+    }
+    .color {
+      width: 30px;
+      height: 30px;
+      margin: 5px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .color.selected {
+      border: 2px solid #000;
     }
   </style>
 </head>
 <body>
-  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div class="container">
+    <div class="canvas-container">
+      <canvas id="canvas" width="1000" height="1000"></canvas>
+    </div>
+    <div class="palette">
+      <div class="color" style="background-color: #000000;" data-color="#000000"></div>
+      <div class="color" style="background-color: #ff0000;" data-color="#ff0000"></div>
+      <div class="color" style="background-color: #00ff00;" data-color="#00ff00"></div>
+      <div class="color" style="background-color: #0000ff;" data-color="#0000ff"></div>
+      <div class="color" style="background-color: #ffff00;" data-color="#ffff00"></div>
+      <div class="color" style="background-color: #ff00ff;" data-color="#ff00ff"></div>
+      <div class="color" style="background-color: #00ffff;" data-color="#00ffff"></div>
+      <div class="color" style="background-color: #ffffff;" data-color="#ffffff"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
   <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const pixelSize = 10;
-    const gridColor = '#ccc';
+    let currentColor = '#000000';
+    let scale = 1;
 
-    // Initialize canvas with grid
     function drawGrid() {
-      ctx.strokeStyle = gridColor;
+      ctx.strokeStyle = '#ccc';
       ctx.lineWidth = 1;
       for (let x = 0; x < canvas.width; x += pixelSize) {
         for (let y = 0; y < canvas.height; y += pixelSize) {
@@ -38,19 +96,51 @@
       }
     }
 
-    // Draw a pixel
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      ctx.fillRect(x * pixelSize * scale, y * pixelSize * scale, pixelSize * scale, pixelSize * scale);
     }
 
-    // Event listener for drawing
-    canvas.addEventListener('click', (e) => {
-      const x = Math.floor(e.offsetX / pixelSize);
-      const y = Math.floor(e.offsetY / pixelSize);
-      const color = '#000000'; // Replace with color picker value
-      drawPixel(x, y, color);
-      // Save the canvas state to backend here
+    function drawPixelToFirebase(x, y, color) {
+      const pixelRef = firebase.database().ref('pixels/' + x + ',' + y);
+      pixelRef.set({ color: color });
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const x = Math.floor(e.offsetX / (pixelSize * scale));
+      const y = Math.floor(e.offsetY / (pixelSize * scale));
+      drawPixel(x, y, currentColor);
+      drawPixelToFirebase(x, y, currentColor);
+    });
+
+    const colors = document.querySelectorAll('.color');
+    colors.forEach(color => {
+      color.addEventListener('click', () => {
+        currentColor = color.getAttribute('data-color');
+        colors.forEach(c => c.classList.remove('selected'));
+        color.classList.add('selected');
+      });
+    });
+
+    firebase.database().ref('pixels').on('value', (snapshot) => {
+      const pixels = snapshot.val();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      for (let key in pixels) {
+        const [x, y] = key.split(',').map(Number);
+        const color = pixels[key].color;
+        drawPixel(x, y, color);
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      if (e.deltaY < 0) {
+        scale = Math.min(scale + 0.1, 3);
+      } else {
+        scale = Math.max(scale - 0.1, 1);
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
     });
 
     drawGrid();
