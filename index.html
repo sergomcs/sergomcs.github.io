@@ -192,4 +192,11 @@
       initialDistance = null;
     });
 
-    // При открытии сайта
+    // При открытии сайта устанавливаем начальное отображение
+    window.onload = function() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.style.transform = `scale(${zoom})`;
+    };
+  </script>
+</body>
+</html>
