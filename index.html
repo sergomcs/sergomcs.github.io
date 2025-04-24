@@ -37,7 +37,6 @@
     canvas {
       image-rendering: pixelated;
       display: block;
-      transform-origin: top left;
       position: absolute;
       left: 0;
       top: 0;
@@ -47,16 +46,6 @@
 
     #controls {
       margin: 10px;
-    }
-
-    #zoom-display {
-      position: fixed;
-      bottom: 10px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 4px 8px;
-      border-radius: 5px;
-      font-size: 14px;
     }
   </style>
 </head>
@@ -71,19 +60,14 @@
     <input type="color" id="colorPicker" value="#000000" />
   </div>
 
-  <div id="zoom-display">Zoom: 10%</div>
-
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const colorPicker = document.getElementById('colorPicker');
-    const zoomDisplay = document.getElementById('zoom-display');
     const container = document.getElementById('container');
 
-    let zoom = 0.1;  // Начальный зум 10%
-    let drawing = false;
     const pixelSize = 10;
-    let initialDistance = null;
+    let drawing = false;
 
     // Инициализация холста
     function initCanvas() {
@@ -105,68 +89,11 @@
       initCanvas();
     }
 
-    // Зум колесиком мыши
-    container.addEventListener('wheel', (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        const delta = -e.deltaY;
-        const factor = delta > 0 ? 1.1 : 0.9;
-        updateZoom(factor, e.clientX - container.getBoundingClientRect().left, e.clientY - container.getBoundingClientRect().top);
-      }
-    });
-
-    // Зум жестом на мобильном
-    container.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        initialDistance = getDistance(e.touches[0], e.touches[1]);
-      }
-    });
-
-    container.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const currentDistance = getDistance(e.touches[0], e.touches[1]);
-        if (initialDistance !== null) {
-          const factor = currentDistance / initialDistance;
-          const touchCenter = getTouchCenter(e.touches[0], e.touches[1]);
-          updateZoom(factor, touchCenter.x, touchCenter.y);
-          initialDistance = currentDistance;
-        }
-      }
-    });
-
-    container.addEventListener('touchend', () => {
-      initialDistance = null;
-    });
-
-    function getDistance(touch1, touch2) {
-      return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-    }
-
-    function getTouchCenter(touch1, touch2) {
-      return {
-        x: (touch1.clientX + touch2.clientX) / 2 - container.getBoundingClientRect().left,
-        y: (touch1.clientY + touch2.clientY) / 2 - container.getBoundingClientRect().top
-      };
-    }
-
-    function updateZoom(factor, centerX, centerY) {
-      const oldZoom = zoom;
-      zoom = Math.max(0.1, Math.min(5, zoom * factor));
-      
-      const offsetX = (centerX / oldZoom - centerX / zoom);
-      const offsetY = (centerY / oldZoom - centerY / zoom);
-      
-      canvas.style.transform = `scale(${zoom}) translate(${offsetX}px, ${offsetY}px)`;
-      zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
-    }
-
     function getMousePos(e) {
       const rect = canvas.getBoundingClientRect();
       return {
-        x: Math.floor((e.clientX - rect.left) / zoom),
-        y: Math.floor((e.clientY - rect.top) / zoom)
+        x: Math.floor((e.clientX - rect.left) / pixelSize),
+        y: Math.floor((e.clientY - rect.top) / pixelSize)
       };
     }
 
@@ -174,8 +101,8 @@
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       return {
-        x: Math.floor((touch.clientX - rect.left) / zoom),
-        y: Math.floor((touch.clientY - rect.top) / zoom)
+        x: Math.floor((touch.clientX - rect.left) / pixelSize),
+        y: Math.floor((touch.clientY - rect.top) / pixelSize)
       };
     }
 
@@ -186,7 +113,7 @@
 
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x - (x % pixelSize), y - (y % pixelSize), pixelSize, pixelSize);
+      ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
       saveDrawing();
     }
 
@@ -201,7 +128,7 @@
       if (e.altKey || (e.touches && e.touches.length > 1)) {
         return;
       }
-      
+
       drawPixel(pos.x, pos.y, colorPicker.value);
     }
 
