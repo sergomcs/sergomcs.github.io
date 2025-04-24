@@ -1,12 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My Collective NFT Canvas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Canvas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin-top: 50px;
+        }
+
+        #canvas {
+            display: grid;
+            grid-template-columns: repeat(1000, 1fr);
+            grid-template-rows: repeat(1000, 1fr);
+            gap: 1px;
+            border: 1px solid black;
+        }
+
+        .pixel {
+            width: 1px;
+            height: 1px;
+            background-color: white;
+        }
+
+        #color-picker {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Hello from GitHub Pages!</h1>
-  <p>This is your first live GitHub Page.</p>
+
+    <h1>Pixel Art Canvas</h1>
+    <div id="canvas"></div>
+
+    <label for="color-picker">Choose color: </label>
+    <input type="color" id="color-picker" value="#000000">
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const colorPicker = document.getElementById('color-picker');
+
+        // Create the 1000x1000 pixel grid
+        function createCanvas() {
+            for (let i = 0; i < 1000 * 1000; i++) {
+                const pixel = document.createElement('div');
+                pixel.classList.add('pixel');
+                pixel.addEventListener('click', () => {
+                    pixel.style.backgroundColor = colorPicker.value;
+                });
+                canvas.appendChild(pixel);
+            }
+        }
+
+        // Call the function to create the canvas
+        createCanvas();
+    </script>
+
 </body>
 </html>
-
