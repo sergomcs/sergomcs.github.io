@@ -92,6 +92,22 @@
     canvas.width = 1000;
     canvas.height = 1000;
 
+    // Загружаем изображение листьев
+    const leafImage = new Image();
+    leafImage.src = 'https://www.example.com/leaf.png';  // Поменяй на свой URL с изображением
+
+    leafImage.onload = function() {
+      // Рисуем листья на фоне
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const scale = Math.random() * 0.5 + 0.5; // Масштабирование от 50% до 100%
+
+        ctx.globalAlpha = 0.2; // Прозрачность листьев
+        ctx.drawImage(leafImage, x, y, leafImage.width * scale, leafImage.height * scale);
+      }
+    };
+
     // Зум
     container.addEventListener('wheel', (e) => {
       if (e.ctrlKey) {
