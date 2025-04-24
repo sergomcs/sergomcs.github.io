@@ -161,6 +161,38 @@
 
     canvas.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('mouseleave', () => drawing = false);
+
+    // Мобильное масштабирование с двумя пальцами
+    let initialDistance = null;
+    let initialZoom = zoom;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialZoom = zoom;
+      }
+    });
+
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialDistance) {
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const scale = currentDistance / initialDistance;
+        zoom = Math.max(0.1, Math.min(10, initialZoom * scale));
+        canvas.style.transform = `scale(${zoom})`;
+        zoomDisplay.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+      }
+    });
+
+    container.addEventListener('touchend', () => {
+      initialDistance = null;
+    });
+
   </script>
 </body>
 </html>
