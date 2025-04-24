@@ -71,7 +71,7 @@
     <input type="color" id="colorPicker" value="#000000" />
   </div>
 
-  <div id="zoom-display">Zoom: 100%</div>
+  <div id="zoom-display">Zoom: 0%</div>
 
   <script>
     const canvas = document.getElementById('canvas');
@@ -80,14 +80,13 @@
     const zoomDisplay = document.getElementById('zoom-display');
     const container = document.getElementById('container');
 
-    let zoom = 1;
+    let zoom = 0.1;  // Начальный зум 10%
     let drawing = false;
     const pixelSize = 10;
     let initialDistance = null;
 
     // Инициализация холста
     function initCanvas() {
-      // Загружаем из localStorage
       const saved = localStorage.getItem('chia-pixelverse');
       if (saved) {
         const img = new Image();
@@ -97,16 +96,12 @@
         };
         img.src = saved;
       } else {
-        // Очищаем холст, если нет сохраненных данных
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
 
-    // Синхронизация с сервером (эмуляция)
+    // Синхронизация с сервером
     function syncWithServer() {
-      // В реальном приложении здесь был бы запрос к серверу
-      // для получения актуального состояния холста
-      // Для демонстрации просто используем localStorage
       initCanvas();
     }
 
@@ -160,8 +155,6 @@
       const oldZoom = zoom;
       zoom = Math.max(0.1, Math.min(5, zoom * factor));
       
-      // Масштабирование относительно центра
-      const containerRect = container.getBoundingClientRect();
       const offsetX = (centerX / oldZoom - centerX / zoom);
       const offsetY = (centerY / oldZoom - centerY / zoom);
       
@@ -189,7 +182,6 @@
     function saveDrawing() {
       const data = canvas.toDataURL();
       localStorage.setItem('chia-pixelverse', data);
-      // В реальном приложении здесь бы отправлялись изменения на сервер
     }
 
     function drawPixel(x, y, color) {
@@ -246,7 +238,6 @@
     window.addEventListener('load', () => {
       initCanvas();
       syncWithServer();
-      // Устанавливаем интервал для синхронизации (например, каждые 5 секунд)
       setInterval(syncWithServer, 5000);
     });
   </script>
