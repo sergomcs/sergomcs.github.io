@@ -1,65 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Art Canvas</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            margin-top: 50px;
-        }
+  <meta charset="UTF-8">
+  <title>Pixel Art Canvas</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    }
 
-        #canvas {
-            display: grid;
-            grid-template-columns: repeat(1000, 1fr);
-            grid-template-rows: repeat(1000, 1fr);
-            gap: 1px;
-            border: 1px solid black;
-        }
+    #canvas {
+      border: 1px solid #ccc;
+      image-rendering: pixelated;
+      margin-top: 20px;
+    }
 
-        .pixel {
-            width: 1px;
-            height: 1px;
-            background-color: white;
-        }
-
-        #color-picker {
-            margin-top: 20px;
-        }
-    </style>
+    #info {
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>Pixel Art Canvas</h1>
-    <div id="canvas"></div>
+  <h1>Pixel Art Canvas</h1>
 
-    <label for="color-picker">Choose color: </label>
-    <input type="color" id="color-picker" value="#000000">
+  <input type="color" id="colorPicker" value="#000000">
+  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div id="info">Mouse: (x: 0, y: 0)</div>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const colorPicker = document.getElementById('color-picker');
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const info = document.getElementById('info');
 
-        // Create the 1000x1000 pixel grid
-        function createCanvas() {
-            for (let i = 0; i < 1000 * 1000; i++) {
-                const pixel = document.createElement('div');
-                pixel.classList.add('pixel');
-                pixel.addEventListener('click', () => {
-                    pixel.style.backgroundColor = colorPicker.value;
-                });
-                canvas.appendChild(pixel);
-            }
-        }
+    // Размер одного пикселя (можно изменить масштаб, если нужно)
+    const pixelSize = 1;
 
-        // Call the function to create the canvas
-        createCanvas();
-    </script>
+    let painting = false;
+
+    canvas.addEventListener('mousedown', () => painting = true);
+    canvas.addEventListener('mouseup', () => painting = false);
+    canvas.addEventListener('mouseleave', () => painting = false);
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left));
+      const y = Math.floor((e.clientY - rect.top));
+      info.textContent = `Mouse: (x: ${x}, y: ${y})`;
+
+      if (painting) {
+        ctx.fillStyle = colorPicker.value;
+        ctx.fillRect(x, y, pixelSize, pixelSize);
+      }
+    });
+
+    // Нарисовать прозрачную сетку
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+      for (let i = 0; i <= canvas.width; i += pixelSize) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let j = 0; j <= canvas.height; j += pixelSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(canvas.width, j);
+        ctx.stroke();
+      }
+    }
+
+    drawGrid(); // Сетка отрисовывается при запуске
+  </script>
 
 </body>
 </html>
