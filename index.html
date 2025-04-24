@@ -85,26 +85,66 @@
       }
     }
 
+    // Сохранение состояния в localStorage
+    function saveState() {
+      const pixels = [];
+      for (let x = 0; x < canvasSize / pixelSize; x++) {
+        for (let y = 0; y < canvasSize / pixelSize; y++) {
+          const pixelColor = ctx.getImageData(x * pixelSize, y * pixelSize, 1, 1).data;
+          pixels.push({ x, y, color: `rgb(${pixelColor[0]},${pixelColor[1]},${pixelColor[2]})` });
+        }
+      }
+      localStorage.setItem('canvasState', JSON.stringify(pixels));
+    }
+
+    // Загрузка состояния из localStorage
+    function loadState() {
+      const savedState = JSON.parse(localStorage.getItem('canvasState') || '[]');
+      savedState.forEach(({ x, y, color }) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      });
+    }
+
     // Функция для рисования пикселей
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
       ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
     }
 
-    // Обработчик для рисования пикселей
+    // Обработчик для рисования пикселей при удержании мыши
+    let isDrawing = false;
+
     canvas.addEventListener('mousedown', (e) => {
+      isDrawing = true;
       const x = Math.floor(e.offsetX / pixelSize);
       const y = Math.floor(e.offsetY / pixelSize);
       drawPixel(x, y, colorPicker.value);
+      saveState();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isDrawing = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDrawing) {
+        const x = Math.floor(e.offsetX / pixelSize);
+        const y = Math.floor(e.offsetY / pixelSize);
+        drawPixel(x, y, colorPicker.value);
+        saveState();
+      }
     });
 
     // Очистить холст
     clearButton.addEventListener('click', () => {
-      drawGrid(); // Восстанавливаем шахматный фон
+      drawGrid();
+      localStorage.removeItem('canvasState'); // Удаляем сохраненное состояние
     });
 
     // Инициализация
     drawGrid();
+    loadState(); // Загрузка состояния
   </script>
 </body>
 </html>
