@@ -9,73 +9,75 @@
       flex-direction: column;
       align-items: center;
       font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #48A23F, #005C3B);
+      color: white;
+      height: 100vh;
+      margin: 0;
     }
 
-    #canvas {
-      border: 1px solid #ccc;
-      image-rendering: pixelated;
+    h1 {
       margin-top: 20px;
     }
 
-    #info {
-      margin-top: 10px;
+    #canvas {
+      image-rendering: pixelated;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      background-color: transparent;
+    }
+
+    #controls {
+      margin: 20px;
     }
   </style>
 </head>
 <body>
-
   <h1>Pixel Art Canvas</h1>
-
-  <input type="color" id="colorPicker" value="#000000">
   <canvas id="canvas" width="1000" height="1000"></canvas>
-  <div id="info">Mouse: (x: 0, y: 0)</div>
+  <div id="controls">
+    <input type="color" id="colorPicker" value="#000000" />
+  </div>
 
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const colorPicker = document.getElementById('colorPicker');
-    const info = document.getElementById('info');
 
-    // Размер одного пикселя (можно изменить масштаб, если нужно)
-    const pixelSize = 1;
+    let drawing = false;
 
-    let painting = false;
-
-    canvas.addEventListener('mousedown', () => painting = true);
-    canvas.addEventListener('mouseup', () => painting = false);
-    canvas.addEventListener('mouseleave', () => painting = false);
-
-    canvas.addEventListener('mousemove', (e) => {
+    function getMousePos(e) {
       const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left));
-      const y = Math.floor((e.clientY - rect.top));
-      info.textContent = `Mouse: (x: ${x}, y: ${y})`;
-
-      if (painting) {
-        ctx.fillStyle = colorPicker.value;
-        ctx.fillRect(x, y, pixelSize, pixelSize);
-      }
-    });
-
-    // Нарисовать прозрачную сетку
-    function drawGrid() {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
-      for (let i = 0; i <= canvas.width; i += pixelSize) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvas.height);
-        ctx.stroke();
-      }
-      for (let j = 0; j <= canvas.height; j += pixelSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, j);
-        ctx.lineTo(canvas.width, j);
-        ctx.stroke();
-      }
+      return {
+        x: Math.floor(e.clientX - rect.left),
+        y: Math.floor(e.clientY - rect.top)
+      };
     }
 
-    drawGrid(); // Сетка отрисовывается при запуске
-  </script>
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      draw(e);
+    });
 
+    canvas.addEventListener('mouseup', () => {
+      drawing = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (drawing) draw(e);
+    });
+
+    function draw(e) {
+      const pos = getMousePos(e);
+      const size = 10; // размер пикселя
+      if (e.altKey) {
+        const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+        const hex = `#${[pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('')}`;
+        colorPicker.value = hex;
+      } else {
+        ctx.fillStyle = colorPicker.value;
+        ctx.fillRect(pos.x - (pos.x % size), pos.y - (pos.y % size), size, size);
+      }
+    }
+  </script>
 </body>
 </html>
