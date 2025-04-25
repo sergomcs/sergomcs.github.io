@@ -72,9 +72,18 @@
     const colorPicker = document.getElementById('colorPicker');
     let scale = 1;
     let isDrawing = false;
-
     const size = 1000;
     const pixels = Array.from({ length: size }, () => Array(size).fill(null));
+
+    // WebSocket клиент для связи с сервером
+    const socket = new WebSocket('ws://localhost:8080');
+
+    // Обработка входящих сообщений
+    socket.onmessage = (event) => {
+      const { x, y, color } = JSON.parse(event.data);
+      drawPixel(x, y, color);
+      redraw();
+    };
 
     function drawPixel(x, y, color) {
       if (x < 0 || y < 0 || x >= size || y >= size) return;
@@ -116,6 +125,8 @@
       const { x, y } = getMousePos(e);
       drawPixel(x, y, colorPicker.value);
       redraw();
+      // Отправляем данные на сервер
+      socket.send(JSON.stringify({ x, y, color: colorPicker.value }));
     });
 
     canvas.addEventListener('mousemove', e => {
@@ -123,6 +134,8 @@
       const { x, y } = getMousePos(e);
       drawPixel(x, y, colorPicker.value);
       redraw();
+      // Отправляем данные на сервер
+      socket.send(JSON.stringify({ x, y, color: colorPicker.value }));
     });
 
     canvas.addEventListener('mouseup', () => isDrawing = false);
