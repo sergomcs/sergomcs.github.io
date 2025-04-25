@@ -1,169 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Chia Pixelverse</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHIA Community Pixel Art</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(to bottom right, #48A23F, #005C3B);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: white;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    h1 {
-      margin: 20px 0;
-    }
-
-    #container {
-      width: 1000px;
-      height: 1000px;
-      position: relative;
-      border: 3px solid #ccc;
-      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
-                        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
-      background-size: 20px 20px;
-      background-position: 0 0, 10px 10px;
-      touch-action: none;
-    }
-
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; }
+    #toolbar { margin: 10px; }
     canvas {
-      image-rendering: pixelated;
-      display: block;
-      width: 100%;
-      height: 100%;
-      background-color: transparent; /* фон прозрачный */
-    }
-
-    #controls {
-      margin: 10px;
+      /* шахматный фон через два повторяющихся линейных градиента */
+      background:
+        repeating-linear-gradient(0deg, #ccc 0px, #ccc 20px, transparent 20px, transparent 40px),
+        repeating-linear-gradient(90deg, #ccc 0px, #ccc 20px, transparent 20px, transparent 40px);
+      background-size: 40px 40px; /* размер ячейки шахматки */ :contentReference[oaicite:6]{index=6}
+      image-rendering: pixelated; /* резкость пикселей при зуме */ :contentReference[oaicite:7]{index=7}
+      cursor: crosshair;
     }
   </style>
 </head>
 <body>
-  <h1>Chia Pixelverse</h1>
-
-  <div id="container">
-    <canvas id="canvas" width="1000" height="1000"></canvas>
+  <h1>CHIA Community Pixel Art</h1>
+  <div id="toolbar">
+    <input type="color" id="colorPicker" value="#000000"> <!-- палитра цветов --> :contentReference[oaicite:8]{index=8}
+    <button id="zoomIn">+</button>
+    <button id="zoomOut">−</button>
   </div>
+  <canvas id="pixelCanvas" width="1000" height="1000"></canvas> <!-- Canvas 1000×1000 --> :contentReference[oaicite:9]{index=9}
 
-  <div id="controls">
-    <input type="color" id="colorPicker" value="#000000" />
-  </div>
+  <!-- Socket.IO клиент из CDN -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+          integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+          crossorigin="anonymous"></script> :contentReference[oaicite:10]{index=10}
 
   <script>
-    const canvas = document.getElementById('canvas');
+    const socket = io('https://your-server-url.com'); // подключение к серверу :contentReference[oaicite:11]{index=11}
+    let scale = 1;
+    const canvas = document.getElementById('pixelCanvas');
     const ctx = canvas.getContext('2d');
-    const colorPicker = document.getElementById('colorPicker');
-    const container = document.getElementById('container');
 
-    const pixelSize = 1; // Размер одного пикселя
-    let drawing = false;
+    // Зум: промежуточный Canvas + drawImage + отключенный smoothing :contentReference[oaicite:12]{index=12}
+    document.getElementById('zoomIn').onclick = () => { scale *= 1.2; redraw(); };
+    document.getElementById('zoomOut').onclick = () => { scale /= 1.2; redraw(); };
 
-    // Инициализация холста
-    function initCanvas() {
-      const saved = localStorage.getItem('chia-pixelverse');
-      if (saved) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-        };
-        img.src = saved;
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
+    // Инициализация: сервер шлёт полный массив цветов 1000×1000 :contentReference[oaicite:13]{index=13}
+    socket.on('init', state =>
+      state.forEach((row, y) => row.forEach((color, x) => drawPixel(x, y, color)))
+    );
+    // При новом пикселе от сервера :contentReference[oaicite:14]{index=14}
+    socket.on('draw', ({ x, y, color }) => drawPixel(x, y, color));
 
-    // Синхронизация с сервером
-    function syncWithServer() {
-      initCanvas();
-    }
-
-    function getMousePos(e) {
+    // Отправка клика: координаты через getBoundingClientRect и деление на scale :contentReference[oaicite:15]{index=15}
+    canvas.addEventListener('click', e => {
       const rect = canvas.getBoundingClientRect();
-      return {
-        x: Math.floor((e.clientX - rect.left) / pixelSize),
-        y: Math.floor((e.clientY - rect.top) / pixelSize)
-      };
-    }
+      const x = Math.floor((e.clientX - rect.left) / scale);
+      const y = Math.floor((e.clientY - rect.top) / scale);
+      const color = document.getElementById('colorPicker').value;
+      socket.emit('draw', { x, y, color });
+    });
 
-    function getTouchPos(e) {
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: Math.floor((touch.clientX - rect.left) / pixelSize),
-        y: Math.floor((touch.clientY - rect.top) / pixelSize)
-      };
-    }
-
-    function saveDrawing() {
-      const data = canvas.toDataURL();
-      localStorage.setItem('chia-pixelverse', data);
-    }
-
+    // Рисуем отдельный пиксель 1×1 px методом fillRect :contentReference[oaicite:16]{index=16}
     function drawPixel(x, y, color) {
       ctx.fillStyle = color;
-      ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-      saveDrawing();
+      ctx.fillRect(x, y, 1, 1);
     }
 
-    function draw(e) {
-      let pos;
-      if (e.type.includes('touch')) {
-        pos = getTouchPos(e);
-      } else {
-        pos = getMousePos(e);
-      }
-
-      if (e.altKey || (e.touches && e.touches.length > 1)) {
-        return;
-      }
-
-      drawPixel(pos.x, pos.y, colorPicker.value);
+    // Функция redraw для зума
+    function redraw() {
+      const tmp = document.createElement('canvas');
+      tmp.width = tmp.height = 1000;
+      tmp.getContext('2d').drawImage(canvas, 0, 0);
+      canvas.width = 1000 * scale;
+      canvas.height = 1000 * scale;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
     }
-
-    // Обработчики мыши
-    canvas.addEventListener('mousedown', (e) => {
-      drawing = true;
-      draw(e);
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (drawing) draw(e);
-    });
-
-    canvas.addEventListener('mouseup', () => drawing = false);
-    canvas.addEventListener('mouseleave', () => drawing = false);
-
-    // Обработчики касаний
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        drawing = true;
-        draw(e);
-      }
-    });
-
-    canvas.addEventListener('touchmove', (e) => {
-      if (drawing && e.touches.length === 1) {
-        draw(e);
-      }
-    });
-
-    canvas.addEventListener('touchend', () => drawing = false);
-
-    // Инициализация при загрузке
-    window.addEventListener('load', () => {
-      initCanvas();
-      syncWithServer();
-      setInterval(syncWithServer, 5000);
-    });
   </script>
 </body>
 </html>
