@@ -1,171 +1,142 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CHIA Pixel Art</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      background: linear-gradient(135deg, #29AB87, #004F2D);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
-      touch-action: none;
+      height: 100%;
+      background: linear-gradient(135deg, #d4f7dc, #e1f5e6, #d2efe0);
+      font-family: sans-serif;
     }
-
     #toolbar {
       position: absolute;
       top: 10px;
       left: 10px;
       z-index: 10;
-      background: rgba(255, 255, 255, 0.85);
-      padding: 5px 10px;
+      background: rgba(255,255,255,0.8);
+      padding: 5px;
       border-radius: 8px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
     }
-
     canvas {
+      display: block;
+      margin: auto;
       background:
         repeating-linear-gradient(0deg, #ccc 0px, #ccc 20px, transparent 20px, transparent 40px),
         repeating-linear-gradient(90deg, #ccc 0px, #ccc 20px, transparent 20px, transparent 40px);
       background-size: 40px 40px;
       image-rendering: pixelated;
-      touch-action: none;
       cursor: crosshair;
+      touch-action: none;
     }
   </style>
 </head>
 <body>
   <div id="toolbar">
-    <input type="color" id="colorPicker" value="#000000">
+    <input type="color" id="colorPicker" value="#00aa00">
     <button id="zoomIn">+</button>
     <button id="zoomOut">−</button>
   </div>
   <canvas id="pixelCanvas" width="1000" height="1000"></canvas>
 
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
-    integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
-    crossorigin="anonymous"></script>
-
   <script>
-    const socket = io('http://localhost:3000'); // Замени на твой серверный адрес
-
     const canvas = document.getElementById('pixelCanvas');
     const ctx = canvas.getContext('2d');
-    let scale = 1;
-    let offsetX = 0;
-    let offsetY = 0;
-    let isDragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-
     const colorPicker = document.getElementById('colorPicker');
+    let scale = 1;
+    let originX = 0;
+    let originY = 0;
+    let isPanning = false;
+    let startPan = { x: 0, y: 0 };
 
-    const width = 1000;
-    const height = 1000;
+    const size = 1000;
     const pixelSize = 1;
+    const pixels = [];
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const buffer = document.createElement('canvas');
-    buffer.width = width;
-    buffer.height = height;
-    const bufferCtx = buffer.getContext('2d');
+    for (let x = 0; x < size; x++) {
+      pixels[x] = [];
+      for (let y = 0; y < size; y++) {
+        pixels[x][y] = null;
+      }
+    }
 
     function drawPixel(x, y, color) {
-      bufferCtx.fillStyle = color;
-      bufferCtx.fillRect(x, y, pixelSize, pixelSize);
-      redraw();
+      pixels[x][y] = color;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 1, 1);
     }
 
     function redraw() {
-      ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+      const temp = document.createElement('canvas');
+      temp.width = size;
+      temp.height = size;
+      const tempCtx = temp.getContext('2d');
+      for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+          if (pixels[x][y]) {
+            tempCtx.fillStyle = pixels[x][y];
+            tempCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      canvas.width = size * scale;
+      canvas.height = size * scale;
       ctx.imageSmoothingEnabled = false;
-      ctx.clearRect(-offsetX / scale, -offsetY / scale, canvas.width / scale, canvas.height / scale);
-      ctx.drawImage(buffer, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(temp, originX, originY, size, size, 0, 0, canvas.width, canvas.height);
     }
 
-    socket.on('init', state => {
-      state.forEach((row, y) => {
-        row.forEach((color, x) => {
-          bufferCtx.fillStyle = color;
-          bufferCtx.fillRect(x, y, 1, 1);
-        });
-      });
+    canvas.addEventListener('click', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / scale);
+      const y = Math.floor((e.clientY - rect.top) / scale);
+      drawPixel(x, y, colorPicker.value);
       redraw();
     });
 
-    socket.on('draw', ({ x, y, color }) => {
-      drawPixel(x, y, color);
-    });
-
-    canvas.addEventListener('click', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left - offsetX) / scale);
-      const y = Math.floor((e.clientY - rect.top - offsetY) / scale);
-      const color = colorPicker.value;
-      socket.emit('draw', { x, y, color });
-    });
-
-    document.getElementById('zoomIn').addEventListener('click', () => {
+    document.getElementById('zoomIn').onclick = () => {
       scale *= 1.2;
       redraw();
-    });
-
-    document.getElementById('zoomOut').addEventListener('click', () => {
+    };
+    document.getElementById('zoomOut').onclick = () => {
       scale /= 1.2;
       redraw();
-    });
+    };
 
-    canvas.addEventListener('wheel', (e) => {
+    // Zoom with mouse wheel
+    canvas.addEventListener('wheel', e => {
       e.preventDefault();
-      const delta = e.deltaY < 0 ? 1.1 : 0.9;
-      scale *= delta;
+      scale *= (e.deltaY < 0) ? 1.1 : 0.9;
       redraw();
     });
 
-    canvas.addEventListener('pointerdown', (e) => {
-      isDragging = true;
-      dragStartX = e.clientX - offsetX;
-      dragStartY = e.clientY - offsetY;
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-      if (isDragging) {
-        offsetX = e.clientX - dragStartX;
-        offsetY = e.clientY - dragStartY;
-        redraw();
-      }
-    });
-
-    canvas.addEventListener('pointerup', () => isDragging = false);
-    canvas.addEventListener('pointerleave', () => isDragging = false);
-
-    // Touch Zoom (pinch)
-    let lastTouchDist = null;
-    canvas.addEventListener('touchmove', (e) => {
+    // Touch zoom for mobile
+    let lastDist = 0;
+    canvas.addEventListener('touchmove', e => {
       if (e.touches.length === 2) {
+        e.preventDefault();
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (lastTouchDist) {
-          const zoom = dist / lastTouchDist;
-          scale *= zoom;
+        if (lastDist) {
+          const delta = dist - lastDist;
+          scale += delta * 0.005;
+          if (scale < 1) scale = 1;
           redraw();
         }
-        lastTouchDist = dist;
+        lastDist = dist;
       }
-    }, { passive: false });
+    });
+    canvas.addEventListener('touchend', () => {
+      lastDist = 0;
+    });
 
-    canvas.addEventListener('touchend', () => lastTouchDist = null);
+    redraw();
   </script>
 </body>
 </html>
